@@ -1,3 +1,3 @@
 [submodule "nostrdb"]
 	path = nostrdb
-	url = git@github.com:mmalmi/nostrdb.git
+	url = https://github.com/mmalmi/nostrdb.git
