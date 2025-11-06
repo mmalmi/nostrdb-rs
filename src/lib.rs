@@ -26,9 +26,11 @@ mod profile;
 mod query;
 mod relay;
 mod result;
+pub mod socialgraph;
 mod subscription;
 mod tags;
 mod transaction;
+mod uid;
 mod util;
 
 pub use block::{Block, BlockType, Blocks, Mention};
@@ -49,6 +51,7 @@ pub use result::Result;
 pub use subscription::Subscription;
 pub use tags::{Tag, TagIter, Tags, TagsIter};
 pub use transaction::Transaction;
+pub use uid::Uid;
 pub use util::nip10::{Marker, NoteIdRef, NoteIdRefBuf, NoteReply, NoteReplyBuf};
 
 mod test_util;

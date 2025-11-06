@@ -65,6 +65,10 @@ fn main() {
             "nostrdb/src/invoice.c",
             "nostrdb/src/nostr_bech32.c",
             "nostrdb/src/content_parser.c",
+            "nostrdb/src/ndb_uid.c",
+            "nostrdb/src/ndb_socialgraph.c",
+            "nostrdb/src/metadata.c",
+            "nostrdb/src/binmoji.c",
             "nostrdb/ccan/ccan/crypto/sha256/sha256.c",
             "nostrdb/src/bolt11/bech32.c",
             "nostrdb/src/block.c",
@@ -141,8 +145,11 @@ fn main() {
     {
         let bindings = bindgen::Builder::default()
             .header("nostrdb/src/nostrdb.h")
+            .header("nostrdb/src/ndb_uid.h")
+            .header("nostrdb/src/ndb_socialgraph.h")
             .clang_arg("-Inostrdb/ccan")
             .clang_arg("-Inostrdb/src")
+            .clang_arg("-Inostrdb/deps/lmdb")
             .generate()
             .expect("Unable to generate bindings");
 
