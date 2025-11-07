@@ -72,6 +72,8 @@ fn main() {
             "nostrdb/ccan/ccan/crypto/sha256/sha256.c",
             "nostrdb/src/bolt11/bech32.c",
             "nostrdb/src/block.c",
+            "nostrdb/src/metadata.c",
+            "nostrdb/src/binmoji.c",
             "nostrdb/deps/flatcc/src/runtime/json_parser.c",
             "nostrdb/deps/flatcc/src/runtime/verifier.c",
             "nostrdb/deps/flatcc/src/runtime/builder.c",
@@ -147,6 +149,7 @@ fn main() {
             .header("nostrdb/src/nostrdb.h")
             .header("nostrdb/src/ndb_uid.h")
             .header("nostrdb/src/ndb_socialgraph.h")
+            .header("nostrdb/src/metadata.h")
             .clang_arg("-Inostrdb/ccan")
             .clang_arg("-Inostrdb/src")
             .clang_arg("-Inostrdb/deps/lmdb")

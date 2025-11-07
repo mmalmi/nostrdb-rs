@@ -8,3 +8,4 @@ target/
 rusty-tags.vi
 .build-result
 .buildcmd
+nostrdb
