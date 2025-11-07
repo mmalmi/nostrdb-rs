@@ -121,7 +121,7 @@ impl<'a> ReactionEntry<'a> {
             #[cfg(target_os = "android")]
             let ptr = { bindings::ndb_reaction_to_str(rstr, buf.as_mut_ptr() as *mut u8) };
             #[cfg(not(target_os = "android"))]
-            let ptr = { bindings::ndb_reaction_to_str(rstr, buf.as_mut_ptr()) };
+            let ptr = { bindings::ndb_reaction_to_str(rstr, buf.as_mut_ptr() as *mut u8) };
             let byte_slice: &[u8] = std::slice::from_raw_parts(ptr as *mut u8, libc::strlen(ptr));
             std::str::from_utf8_unchecked(byte_slice)
         }
