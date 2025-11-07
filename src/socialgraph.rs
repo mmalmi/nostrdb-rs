@@ -98,6 +98,16 @@ pub fn follower_count(txn: &Transaction, ndb: &Ndb, pubkey: &[u8; 32]) -> usize 
     }
 }
 
+/// Set the root user for follow distance calculations
+///
+/// Recalculates all distances from the new root if changed.
+/// This is async - queued to writer thread.
+pub fn set_root(ndb: &Ndb, pubkey: &[u8; 32]) {
+    unsafe {
+        bindings::ndb_socialgraph_set_root(ndb.as_ptr(), pubkey.as_ptr());
+    }
+}
+
 /// Check if one user mutes another
 pub fn is_muting(txn: &Transaction, ndb: &Ndb, muter: &[u8; 32], muted: &[u8; 32]) -> bool {
     unsafe {

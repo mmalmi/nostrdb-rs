@@ -6197,6 +6197,10 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[doc = " Set the root user for follow distance calculations\n Recalculates all distances from the new root if changed\n NOTE: This requires a write transaction and should only be called\n from the writer thread. For application use, consider calling during\n initialization or account switching in a deferred manner.\n @param ndb Database handle\n @param root_pubkey 32-byte root user pubkey"]
+    pub fn ndb_socialgraph_set_root(ndb: *mut ndb, root_pubkey: *const ::std::os::raw::c_uchar);
+}
+extern "C" {
     #[doc = " Check if one user mutes another\n @param txn Active transaction\n @param ndb Database handle\n @param muter_pubkey 32-byte muter pubkey\n @param muted_pubkey 32-byte muted pubkey\n @return 1 if muting, 0 otherwise"]
     pub fn ndb_socialgraph_is_muting(
         txn: *mut ndb_txn,
@@ -7115,6 +7119,14 @@ extern "C" {
         pubkey: *const ::std::os::raw::c_uchar,
         muters_out: *mut ::std::os::raw::c_uchar,
         max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Set the root user for distance calculations (internal API)\n Recalculates all distances from the new root if changed\n Must be called within a write transaction\n @param txn Active write transaction\n @param graph Social graph\n @param root_pubkey 32-byte root user pubkey\n @return 1 on success, 0 on failure"]
+    pub fn ndb_sg_set_root(
+        txn: *mut ::std::os::raw::c_void,
+        graph: *mut ndb_socialgraph,
+        root_pubkey: *const ::std::os::raw::c_uchar,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
