@@ -6187,6 +6187,14 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[doc = " Get followed count for a user (how many users they follow)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return Number of users they follow"]
+    pub fn ndb_socialgraph_followed_count(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     #[doc = " Set the root user for follow distance calculations\n Recalculates all distances from the new root if changed\n NOTE: This requires a write transaction and should only be called\n from the writer thread. For application use, consider calling during\n initialization or account switching in a deferred manner.\n @param ndb Database handle\n @param root_pubkey 32-byte root user pubkey"]
     pub fn ndb_socialgraph_set_root(ndb: *mut ndb, root_pubkey: *const ::std::os::raw::c_uchar);
 }
@@ -6217,6 +6225,22 @@ extern "C" {
         pubkey: *const ::std::os::raw::c_uchar,
         muters_out: *mut ::std::os::raw::c_uchar,
         max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get muter count for a user (how many users mute this user)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return Number of users muting this user"]
+    pub fn ndb_socialgraph_muter_count(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Check if a UID exists for a pubkey (has user been seen before)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return 1 if user has been seen, 0 if not"]
+    pub fn ndb_uid_exists(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -6872,6 +6896,14 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[doc = " Check if UID exists for a pubkey (internal API)\n @param txn Active read transaction\n @param map UID map\n @param pubkey 32-byte binary pubkey\n @return 1 if exists, 0 if not"]
+    pub fn ndb_uid_exists_map(
+        txn: *mut ::std::os::raw::c_void,
+        map: *mut ndb_uid_map,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     #[doc = " Get pubkey for a UID\n @param txn Active transaction\n @param map UID map\n @param uid The UID to look up\n @param pubkey_out Output buffer (must be 32 bytes)\n @return 1 if found, 0 if not found"]
     pub fn ndb_uid_to_pubkey(
         txn: *mut ::std::os::raw::c_void,
@@ -6893,9 +6925,11 @@ pub struct ndb_socialgraph {
     pub users_by_follow_distance_db: *mut ::std::os::raw::c_void,
     pub followed_by_user_db: *mut ::std::os::raw::c_void,
     pub followers_by_user_db: *mut ::std::os::raw::c_void,
+    pub follower_count_db: *mut ::std::os::raw::c_void,
     pub follow_list_created_at_db: *mut ::std::os::raw::c_void,
     pub muted_by_user_db: *mut ::std::os::raw::c_void,
     pub user_muted_by_db: *mut ::std::os::raw::c_void,
+    pub muter_count_db: *mut ::std::os::raw::c_void,
     pub mute_list_created_at_db: *mut ::std::os::raw::c_void,
     pub root_uid: ndb_uid_t,
 }
@@ -6905,7 +6939,7 @@ fn bindgen_test_layout_ndb_socialgraph() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::std::mem::size_of::<ndb_socialgraph>(),
-        112usize,
+        128usize,
         concat!("Size of: ", stringify!(ndb_socialgraph))
     );
     assert_eq!(
@@ -6974,8 +7008,18 @@ fn bindgen_test_layout_ndb_socialgraph() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).follow_list_created_at_db) as usize - ptr as usize },
+        unsafe { ::std::ptr::addr_of!((*ptr).follower_count_db) as usize - ptr as usize },
         72usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ndb_socialgraph),
+            "::",
+            stringify!(follower_count_db)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).follow_list_created_at_db) as usize - ptr as usize },
+        80usize,
         concat!(
             "Offset of field: ",
             stringify!(ndb_socialgraph),
@@ -6985,7 +7029,7 @@ fn bindgen_test_layout_ndb_socialgraph() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).muted_by_user_db) as usize - ptr as usize },
-        80usize,
+        88usize,
         concat!(
             "Offset of field: ",
             stringify!(ndb_socialgraph),
@@ -6995,7 +7039,7 @@ fn bindgen_test_layout_ndb_socialgraph() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).user_muted_by_db) as usize - ptr as usize },
-        88usize,
+        96usize,
         concat!(
             "Offset of field: ",
             stringify!(ndb_socialgraph),
@@ -7004,8 +7048,18 @@ fn bindgen_test_layout_ndb_socialgraph() {
         )
     );
     assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).muter_count_db) as usize - ptr as usize },
+        104usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ndb_socialgraph),
+            "::",
+            stringify!(muter_count_db)
+        )
+    );
+    assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).mute_list_created_at_db) as usize - ptr as usize },
-        96usize,
+        112usize,
         concat!(
             "Offset of field: ",
             stringify!(ndb_socialgraph),
@@ -7015,7 +7069,7 @@ fn bindgen_test_layout_ndb_socialgraph() {
     );
     assert_eq!(
         unsafe { ::std::ptr::addr_of!((*ptr).root_uid) as usize - ptr as usize },
-        104usize,
+        120usize,
         concat!(
             "Offset of field: ",
             stringify!(ndb_socialgraph),
@@ -7094,6 +7148,14 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[doc = " Get followed count for a user (internal API)\n @param txn Active transaction\n @param graph Social graph\n @param pubkey 32-byte pubkey\n @return Number of users they follow"]
+    pub fn ndb_sg_followed_count(
+        txn: *mut ::std::os::raw::c_void,
+        graph: *mut ndb_socialgraph,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     #[doc = " Check if one user mutes another (internal API)\n @param txn Active transaction\n @param graph Social graph\n @param muter_pubkey 32-byte muter pubkey\n @param muted_pubkey 32-byte muted pubkey\n @return 1 if muting, 0 otherwise"]
     pub fn ndb_sg_is_muting(
         txn: *mut ::std::os::raw::c_void,
@@ -7120,6 +7182,14 @@ extern "C" {
         pubkey: *const ::std::os::raw::c_uchar,
         muters_out: *mut ::std::os::raw::c_uchar,
         max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get muter count for a user (internal API)\n @param txn Active transaction\n @param graph Social graph\n @param pubkey 32-byte pubkey\n @return Number of users muting this user"]
+    pub fn ndb_sg_muter_count(
+        txn: *mut ::std::os::raw::c_void,
+        graph: *mut ndb_socialgraph,
+        pubkey: *const ::std::os::raw::c_uchar,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {

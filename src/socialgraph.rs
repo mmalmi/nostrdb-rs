@@ -98,6 +98,17 @@ pub fn follower_count(txn: &Transaction, ndb: &Ndb, pubkey: &[u8; 32]) -> usize 
     }
 }
 
+/// Get followed count for a user (how many users they follow)
+pub fn followed_count(txn: &Transaction, ndb: &Ndb, pubkey: &[u8; 32]) -> usize {
+    unsafe {
+        bindings::ndb_socialgraph_followed_count(
+            txn.as_mut_ptr(),
+            ndb.as_ptr(),
+            pubkey.as_ptr(),
+        ) as usize
+    }
+}
+
 /// Set the root user for follow distance calculations
 ///
 /// Recalculates all distances from the new root if changed.
@@ -176,4 +187,26 @@ pub fn get_muters(
         result.push(pk);
     }
     result
+}
+
+/// Get muter count for a user (how many users mute this user)
+pub fn muter_count(txn: &Transaction, ndb: &Ndb, pubkey: &[u8; 32]) -> usize {
+    unsafe {
+        bindings::ndb_socialgraph_muter_count(
+            txn.as_mut_ptr(),
+            ndb.as_ptr(),
+            pubkey.as_ptr(),
+        ) as usize
+    }
+}
+
+/// Check if a UID exists for a pubkey (has user been seen before)
+pub fn uid_exists(txn: &Transaction, ndb: &Ndb, pubkey: &[u8; 32]) -> bool {
+    unsafe {
+        bindings::ndb_uid_exists(
+            txn.as_mut_ptr(),
+            ndb.as_ptr(),
+            pubkey.as_ptr(),
+        ) != 0
+    }
 }

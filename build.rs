@@ -67,6 +67,7 @@ fn main() {
             "nostrdb/src/content_parser.c",
             "nostrdb/src/ndb_uid.c",
             "nostrdb/src/ndb_socialgraph.c",
+            "nostrdb/src/bucketed_u32_list.c",
             "nostrdb/src/metadata.c",
             "nostrdb/src/binmoji.c",
             "nostrdb/ccan/ccan/crypto/sha256/sha256.c",
