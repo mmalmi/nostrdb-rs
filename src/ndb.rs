@@ -861,4 +861,47 @@ mod tests {
 
         test_util::cleanup_db(&db);
     }
+
+    #[test]
+    fn get_profile_by_missing_pubkey_returns_not_found() {
+        let db = "target/testdbs/missing_pubkey";
+        test_util::cleanup_db(&db);
+
+        {
+            let ndb = Ndb::new(db, &Config::new()).expect("ndb");
+            let txn = Transaction::new(&ndb).expect("txn");
+
+            // Unknown pubkey that doesn't exist in DB
+            let unknown_pubkey: [u8; 32] = [
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            ];
+
+            let result = ndb.get_profile_by_pubkey(&txn, &unknown_pubkey);
+            assert!(matches!(result, Err(Error::NotFound)));
+        }
+
+        test_util::cleanup_db(&db);
+    }
+
+    #[test]
+    fn get_profilekey_by_missing_pubkey_returns_not_found() {
+        let db = "target/testdbs/missing_profilekey";
+        test_util::cleanup_db(&db);
+
+        {
+            let ndb = Ndb::new(db, &Config::new()).expect("ndb");
+            let txn = Transaction::new(&ndb).expect("txn");
+
+            // Unknown pubkey that doesn't exist in DB
+            let unknown_pubkey: [u8; 32] = [0x00; 32];
+
+            let result = ndb.get_profilekey_by_pubkey(&txn, &unknown_pubkey);
+            assert!(matches!(result, Err(Error::NotFound)));
+        }
+
+        test_util::cleanup_db(&db);
+    }
 }
