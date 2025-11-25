@@ -1,5 +1,4 @@
 .direnv/
-/nostrdb
 Cargo.lock
 *.txt
 tags
@@ -8,4 +7,3 @@ target/
 rusty-tags.vi
 .build-result
 .buildcmd
-nostrdb
