@@ -5567,6 +5567,108 @@ extern "C" {
     pub fn ndb_destroy(arg1: *mut ndb);
 }
 extern "C" {
+    #[doc = " Get follow distance from the root user (configured at init)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey to query\n @return Distance (0 = root, 1 = followed by root, etc), 1000 if not in graph"]
+    pub fn ndb_socialgraph_get_follow_distance(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> u32;
+}
+extern "C" {
+    #[doc = " Check if one user follows another\n @param txn Active transaction\n @param ndb Database handle\n @param follower_pubkey 32-byte follower pubkey\n @param followed_pubkey 32-byte followed pubkey\n @return 1 if following, 0 otherwise"]
+    pub fn ndb_socialgraph_is_following(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        follower_pubkey: *const ::std::os::raw::c_uchar,
+        followed_pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get list of users followed by a user\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @param followed_out Output array of 32-byte pubkeys (caller allocates)\n @param max_out Maximum number of entries in output array\n @return Number of followed users written to output (may be less than actual count)"]
+    pub fn ndb_socialgraph_get_followed(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+        followed_out: *mut ::std::os::raw::c_uchar,
+        max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get list of followers of a user\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @param followers_out Output array of 32-byte pubkeys (caller allocates)\n @param max_out Maximum number of entries in output array\n @return Number of followers written to output (may be less than actual count)"]
+    pub fn ndb_socialgraph_get_followers(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+        followers_out: *mut ::std::os::raw::c_uchar,
+        max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get follower count for a user\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return Number of followers"]
+    pub fn ndb_socialgraph_follower_count(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get followed count for a user (how many users they follow)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return Number of users they follow"]
+    pub fn ndb_socialgraph_followed_count(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Set the root user for follow distance calculations\n Recalculates all distances from the new root if changed\n NOTE: This requires a write transaction and should only be called\n from the writer thread. For application use, consider calling during\n initialization or account switching in a deferred manner.\n @param ndb Database handle\n @param root_pubkey 32-byte root user pubkey"]
+    pub fn ndb_socialgraph_set_root(ndb: *mut ndb, root_pubkey: *const ::std::os::raw::c_uchar);
+}
+extern "C" {
+    #[doc = " Check if one user mutes another\n @param txn Active transaction\n @param ndb Database handle\n @param muter_pubkey 32-byte muter pubkey\n @param muted_pubkey 32-byte muted pubkey\n @return 1 if muting, 0 otherwise"]
+    pub fn ndb_socialgraph_is_muting(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        muter_pubkey: *const ::std::os::raw::c_uchar,
+        muted_pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get list of users muted by a user\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @param muted_out Output array of 32-byte pubkeys (caller allocates)\n @param max_out Maximum number of entries in output array\n @return Number of muted users written to output (may be less than actual count)"]
+    pub fn ndb_socialgraph_get_muted(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+        muted_out: *mut ::std::os::raw::c_uchar,
+        max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get list of users who mute this user\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @param muters_out Output array of 32-byte pubkeys (caller allocates)\n @param max_out Maximum number of entries in output array\n @return Number of muters written to output (may be less than actual count)"]
+    pub fn ndb_socialgraph_get_muters(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+        muters_out: *mut ::std::os::raw::c_uchar,
+        max_out: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get muter count for a user (how many users mute this user)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return Number of users muting this user"]
+    pub fn ndb_socialgraph_muter_count(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Check if a UID exists for a pubkey (has user been seen before)\n @param txn Active transaction\n @param ndb Database handle\n @param pubkey 32-byte pubkey\n @return 1 if user has been seen, 0 if not"]
+    pub fn ndb_uid_exists(
+        txn: *mut ndb_txn,
+        ndb: *mut ndb,
+        pubkey: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn ndb_parse_json_note(
         arg1: *mut ndb_json_parser,
         arg2: *mut *mut ndb_note,
