@@ -1,5 +1,5 @@
 [package]
-name = "nostrdb"
+name = "nostrdb-social"
 authors = ["William Casarin <jb55@jb55.com>"]
 description = "An unfairly fast embedded nostr database backed by lmdb"
 readme = "README.md"
