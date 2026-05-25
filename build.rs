@@ -12,6 +12,7 @@ fn secp256k1_build(base_config: &mut Build) {
         .include("nostrdb/deps/secp256k1/src")
         .flag_if_supported("-Wno-unused-function") // some ecmult stuff is defined but not used upstream
         .flag_if_supported("-Wno-unused-parameter") // patching out printf causes this warning
+        .flag_if_supported("-Wno-unterminated-string-initialization")
         .define("SECP256K1_STATIC", "1")
         .define("ENABLE_MODULE_ECDH", Some("1"))
         .define("ENABLE_MODULE_SCHNORRSIG", Some("1"))
@@ -100,7 +101,9 @@ fn main() {
             .flag("-Wno-sign-compare")
             .flag("-Wno-misleading-indentation")
             .flag("-Wno-unused-function")
-            .flag("-Wno-unused-parameter");
+            .flag("-Wno-unused-parameter")
+            .flag_if_supported("-Wno-unused-but-set-variable")
+            .flag_if_supported("-Wno-unterminated-string-initialization");
     } else {
         // need this on windows
         println!("cargo:rustc-link-lib=bcrypt");

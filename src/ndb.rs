@@ -53,6 +53,29 @@ pub struct Ndb {
     pub(crate) subs: Arc<Mutex<SubMap>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NdbStatCounts {
+    pub key_size: usize,
+    pub value_size: usize,
+    pub count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NdbStat {
+    pub common_kinds: Vec<NdbStatCounts>,
+    pub other_kinds: NdbStatCounts,
+}
+
+impl From<bindings::ndb_stat_counts> for NdbStatCounts {
+    fn from(counts: bindings::ndb_stat_counts) -> Self {
+        Self {
+            key_size: counts.key_size,
+            value_size: counts.value_size,
+            count: counts.count,
+        }
+    }
+}
+
 impl Ndb {
     /// Construct a new nostrdb context. Takes a directory where the database
     /// is/will be located and a nostrdb config.
@@ -189,8 +212,54 @@ impl Ndb {
         }
     }
 
+    pub fn delete(&self, filters: &[Filter]) -> Result<usize> {
+        let mut ndb_filters: Vec<bindings::ndb_filter> = filters.iter().map(|a| a.data).collect();
+        let mut deleted: c_int = 0;
+        let res = unsafe {
+            bindings::ndb_delete(
+                self.as_ptr(),
+                ndb_filters.as_mut_ptr(),
+                ndb_filters.len() as c_int,
+                &mut deleted as *mut c_int,
+            )
+        };
+        if res == 1 {
+            Ok(deleted as usize)
+        } else {
+            Err(Error::QueryError)
+        }
+    }
+
     pub fn subscription_count(&self) -> u32 {
         unsafe { bindings::ndb_num_subscriptions(self.as_ptr()) as u32 }
+    }
+
+    pub fn stat(&self) -> Result<NdbStat> {
+        let mut stat = bindings::ndb_stat {
+            dbs: [bindings::ndb_stat_counts {
+                key_size: 0,
+                value_size: 0,
+                count: 0,
+            }; 16],
+            common_kinds: [bindings::ndb_stat_counts {
+                key_size: 0,
+                value_size: 0,
+                count: 0,
+            }; 15],
+            other_kinds: bindings::ndb_stat_counts {
+                key_size: 0,
+                value_size: 0,
+                count: 0,
+            },
+        };
+        let res = unsafe { bindings::ndb_stat(self.as_ptr(), &mut stat as *mut bindings::ndb_stat) };
+        if res == 0 {
+            return Err(Error::QueryError);
+        }
+        Ok(NdbStat {
+            common_kinds: stat.common_kinds.into_iter().map(Into::into).collect(),
+            other_kinds: stat.other_kinds.into(),
+        })
     }
 
     pub fn unsubscribe(&mut self, sub: Subscription) -> Result<()> {
@@ -515,8 +584,36 @@ impl Ndb {
 mod tests {
     use super::*;
     use crate::config::Config;
+    use crate::socialgraph;
     use crate::test_util;
     use tokio::time::{self, sleep, Duration};
+
+    fn test_pubkey(byte: u8) -> [u8; 32] {
+        [byte; 32]
+    }
+
+    fn test_event_json(
+        id: &[u8; 32],
+        pubkey: &[u8; 32],
+        kind: u64,
+        created_at: u64,
+        p_tags: &[[u8; 32]],
+    ) -> String {
+        let tags = p_tags
+            .iter()
+            .map(|tag| format!("[\"p\",\"{}\"]", hex::encode(tag)))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(
+            "[\"EVENT\",\"b\",{{\"id\":\"{}\",\"pubkey\":\"{}\",\"created_at\":{},\"kind\":{},\"tags\":[{}],\"content\":\"\",\"sig\":\"{}\"}}]",
+            hex::encode(id),
+            hex::encode(pubkey),
+            created_at,
+            kind,
+            tags,
+            "0".repeat(128)
+        )
+    }
 
     #[test]
     fn ndb_init_works() {
@@ -881,6 +978,149 @@ mod tests {
 
             let result = ndb.get_profile_by_pubkey(&txn, &unknown_pubkey);
             assert!(matches!(result, Err(Error::NotFound)));
+        }
+
+        test_util::cleanup_db(&db);
+    }
+
+    fn query_len(ndb: &Ndb, filter: Filter) -> usize {
+        let txn = Transaction::new(ndb).expect("txn");
+        let results = ndb.query(&txn, &[filter], 32).expect("query ok");
+        results.len()
+    }
+
+    async fn wait_for_query_len(ndb: &Ndb, filter: Filter, expected: usize) {
+        for _ in 0..50 {
+            if query_len(ndb, filter.clone()) == expected {
+                return;
+            }
+            sleep(Duration::from_millis(20)).await;
+        }
+        assert_eq!(query_len(ndb, filter), expected);
+    }
+
+    #[tokio::test]
+    async fn delete_filter_removes_notes_and_indexes() {
+        let db = "target/testdbs/delete_filter_removes_notes";
+        test_util::cleanup_db(&db);
+
+        {
+            let ndb = Ndb::new(db, &Config::new()).expect("ndb");
+            let filter = Filter::new().kinds(vec![1, 7]).build();
+            let sub = ndb.subscribe(&[filter]).expect("sub_id");
+            let waiter = ndb.wait_for_notes(sub, 3);
+
+            ndb.process_event(r#"["EVENT","b",{"id": "702555e52e82cc24ad517ba78c21879f6e47a7c0692b9b20df147916ae8731a3","pubkey": "32bf915904bfde2d136ba45dde32c88f4aca863783999faea2e847a8fafd2f15","created_at": 1702675561,"kind": 1,"tags": [],"content": "hello, world","sig": "2275c5f5417abfd644b7bc74f0388d70feb5d08b6f90fa18655dda5c95d013bfbc5258ea77c05b7e40e0ee51d8a2efa931dc7a0ec1db4c0a94519762c6625675"}]"#).expect("process ok");
+            ndb.process_event(r#"["EVENT","b",{"id":"d379f55b520a9b2442556917e2cc7b7c16bfe3f4f08856dcc5735eadb2706267","pubkey":"850605096dbfb50b929e38a6c26c3d56c425325c85e05de29b759bc0e5d6cebc","created_at":1720482500,"kind":1,"tags":[["p","5e7ae588d7d11eac4c25906e6da807e68c6498f49a38e4692be5a089616ceb18"]],"content":"@npub1teawtzxh6y02cnp9jphxm2q8u6xxfx85nguwg6ftuksgjctvavvqnsgq5u Verifying My Public Key: \"ksedgwic\"\n","sig":"3e8683490d951e0f5b3b59835063684d3d159322394d2aad3ee027890dcf8d9ff337027f07ec9c5f9799195466723bc459c67fbf3c902ad40a6b51bcb45d3feb"}]"#).expect("process ok");
+            ndb.process_event(r#"["EVENT","b",{"content":"👀","created_at":1761514455,"id":"66af95a6bdfec756344f48241562b684082ff9c76ea940c11c4fd85e91e1219c","kind":7,"pubkey":"d5805ae449e108e907091c67cdf49a9835b3cac3dd11489ad215c0ddf7c658fc","sig":"69f4a3fe7c1cc6aa9c9cc4a2e90e4b71c3b9afaad262e68b92336e0493ff1a748b5dcc20ab6e86d4551dc5ea680ddfa1c08d47f9e4845927e143e8ef2183479b","tags":[["e","d44ad96cb8924092a76bc2afddeb12eb85233c0d03a7d9adc42c2a85a79a4305","wss://relay.primal.net/","04c915daefee38317fa734444acee390a8269fe5810b2241e5e6dd343dfbecc9"],["p","04c915daefee38317fa734444acee390a8269fe5810b2241e5e6dd343dfbecc9","wss://relay.primal.net/"],["k","1"]]}]"#).expect("process ok");
+
+            let _ = waiter.await.expect("wait ok");
+            wait_for_query_len(&ndb, Filter::new().kinds(vec![1]).build(), 2).await;
+            wait_for_query_len(&ndb, Filter::new().kinds(vec![7]).build(), 1).await;
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![1]).build()), 2);
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![7]).build()), 1);
+            assert_eq!(query_len(&ndb, Filter::new().search("Verifying").build()), 1);
+
+            let deleted = ndb
+                .delete(&[Filter::new().search("Verifying").build()])
+                .expect("delete search ok");
+            assert_eq!(deleted, 1);
+            assert_eq!(query_len(&ndb, Filter::new().search("Verifying").build()), 0);
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![1]).build()), 1);
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![7]).build()), 1);
+
+            let deleted = ndb
+                .delete(&[Filter::new().kinds(vec![1]).build()])
+                .expect("delete kind ok");
+            assert_eq!(deleted, 1);
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![1]).build()), 0);
+            assert_eq!(query_len(&ndb, Filter::new().search("hello").build()), 0);
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![7]).build()), 1);
+
+            let stat = ndb.stat().expect("stat ok");
+            assert_eq!(stat.common_kinds[1].count, 0);
+            assert_eq!(stat.common_kinds[6].count, 1);
+        }
+
+        test_util::cleanup_db(&db);
+    }
+
+    #[tokio::test]
+    async fn delete_filter_removes_profile_indexes() {
+        let db = "target/testdbs/delete_filter_removes_profiles";
+        test_util::cleanup_db(&db);
+
+        {
+            let ndb = Ndb::new(db, &Config::new()).expect("ndb");
+            let filter = Filter::new().kinds(vec![0]).build();
+            let sub = ndb.subscribe(&[filter]).expect("sub_id");
+            let waiter = ndb.wait_for_notes(sub, 1);
+            let pubkey: [u8; 32] = [
+                0x3f, 0x77, 0x0d, 0x65, 0xd3, 0xa7, 0x64, 0xa9, 0xc5, 0xcb, 0x50, 0x3a, 0xe1, 0x23,
+                0xe6, 0x2e, 0xc7, 0x59, 0x8a, 0xd0, 0x35, 0xd8, 0x36, 0xe2, 0xa8, 0x10, 0xf3, 0x87,
+                0x7a, 0x74, 0x5b, 0x24,
+            ];
+
+            ndb.process_event(r#"["EVENT","b",{  "id": "0b9f0e14727733e430dcb00c69b12a76a1e100f419ce369df837f7eb33e4523c",  "pubkey": "3f770d65d3a764a9c5cb503ae123e62ec7598ad035d836e2a810f3877a745b24",  "created_at": 1736785355,  "kind": 0,  "tags": [    [      "alt",      "User profile for Derek Ross"    ],    [      "i",      "twitter:derekmross",      "1634343988407726081"    ],    [      "i",      "github:derekross",      "3edaf845975fa4500496a15039323fa3I"    ]  ],  "content": "{\"about\":\"Building NostrPlebs.com and NostrNests.com. The purple pill helps the orange pill go down. Nostr is the social glue that binds all of your apps together.\",\"banner\":\"https://i.nostr.build/O2JE.jpg\",\"display_name\":\"Derek Ross\",\"lud16\":\"derekross@strike.me\",\"name\":\"Derek Ross\",\"nip05\":\"derekross@nostrplebs.com\",\"picture\":\"https://i.nostr.build/MVIJ6OOFSUzzjVEc.jpg\",\"website\":\"https://nostrplebs.com\",\"created_at\":1707238393}",  "sig": "51e1225ccaf9b6739861dc218ac29045b09d5cf3a51b0ac6ea64bd36827d2d4394244e5f58a4e4a324c84eeda060e1a27e267e0d536e5a0e45b0b6bdc2c43bbc"}]"#).expect("process ok");
+            assert_eq!(waiter.await.expect("wait ok").len(), 1);
+
+            {
+                let txn = Transaction::new(&ndb).expect("txn");
+                assert!(ndb.get_profile_by_pubkey(&txn, &pubkey).is_ok());
+                assert_eq!(ndb.search_profile(&txn, "Derek", 1).expect("search ok").len(), 1);
+            }
+
+            let deleted = ndb
+                .delete(&[Filter::new().kinds(vec![0]).build()])
+                .expect("delete profile ok");
+            assert_eq!(deleted, 1);
+            assert_eq!(query_len(&ndb, Filter::new().kinds(vec![0]).build()), 0);
+
+            let txn = Transaction::new(&ndb).expect("txn");
+            assert!(matches!(ndb.get_profile_by_pubkey(&txn, &pubkey), Err(Error::NotFound)));
+            assert!(ndb.search_profile(&txn, "Derek", 1).expect("search ok").is_empty());
+        }
+
+        test_util::cleanup_db(&db);
+    }
+
+    #[tokio::test]
+    async fn delete_filter_preserves_socialgraph_indexes() {
+        let db = "target/testdbs/delete_filter_preserves_socialgraph";
+        test_util::cleanup_db(&db);
+
+        {
+            let ndb = Ndb::new(db, &Config::new().skip_validation(true)).expect("ndb");
+            let root = test_pubkey(0);
+            let alice = test_pubkey(1);
+            let bob = test_pubkey(2);
+            let contact_id = test_pubkey(0xa1);
+            let mute_id = test_pubkey(0xb1);
+
+            ndb.process_event(&test_event_json(&contact_id, &root, 3, 1, &[alice]))
+                .expect("contact process ok");
+            ndb.process_event(&test_event_json(&mute_id, &root, 10000, 2, &[bob]))
+                .expect("mute process ok");
+            wait_for_query_len(&ndb, Filter::new().kinds([3]).build(), 1).await;
+            wait_for_query_len(&ndb, Filter::new().kinds([10000]).build(), 1).await;
+
+            {
+                let txn = Transaction::new(&ndb).expect("txn");
+                assert!(socialgraph::is_following(&txn, &ndb, &root, &alice));
+                assert!(socialgraph::is_muting(&txn, &ndb, &root, &bob));
+            }
+
+            assert_eq!(
+                ndb.delete(&[Filter::new().kinds([3, 10000]).build()])
+                    .expect("delete social events ok"),
+                2
+            );
+            assert_eq!(query_len(&ndb, Filter::new().kinds([3]).build()), 0);
+            assert_eq!(query_len(&ndb, Filter::new().kinds([10000]).build()), 0);
+
+            let txn = Transaction::new(&ndb).expect("txn");
+            assert!(socialgraph::is_following(&txn, &ndb, &root, &alice));
+            assert!(socialgraph::is_muting(&txn, &ndb, &root, &bob));
         }
 
         test_util::cleanup_db(&db);

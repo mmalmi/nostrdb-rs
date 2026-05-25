@@ -5954,6 +5954,12 @@ extern "C" {
         result_capacity: ::std::os::raw::c_int,
         count: *mut ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
+    pub fn ndb_delete(
+        ndb: *mut ndb,
+        filters: *mut ndb_filter,
+        num_filters: ::std::os::raw::c_int,
+        count: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn ndb_note_meta_builder_init(

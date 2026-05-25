@@ -46,7 +46,7 @@ pub use metadata::{
     Counts, CountsEntry, NoteMetadata, NoteMetadataBuf, NoteMetadataBuilder, NoteMetadataEntry,
     NoteMetadataEntryBuf, NoteMetadataEntryVariant, ReactionEntry,
 };
-pub use ndb::Ndb;
+pub use ndb::{Ndb, NdbStat, NdbStatCounts};
 pub use ndb_profile::{NdbProfile, NdbProfileRecord};
 pub use ndb_str::{NdbStr, NdbStrVariant};
 pub use note::{Note, NoteBuildOptions, NoteBuilder, NoteKey};
